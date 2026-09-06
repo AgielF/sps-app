@@ -5,46 +5,83 @@
 ![Python](https://img.shields.io/badge/Python-3.x-3776AB?style=flat-square&logo=python)
 ![Flask](https://img.shields.io/badge/Flask-API-000000?style=flat-square&logo=flask)
 ![MySQL](https://img.shields.io/badge/MySQL-Database-4479A1?style=flat-square&logo=mysql)
-![Netlify](https://img.shields.io/badge/Netlify-Deployed-00C7B7?style=flat-square&logo=netlify)
 ![License](https://img.shields.io/badge/License-MIT-lightgrey?style=flat-square)
 
 ## 📖 Project Overview
 
-The **SPS App (Smart Payment System for Waste Management)** is a comprehensive, full-stack platform designed to modernize and digitize waste collection. This repository contains the complete unified workspace, composed of two distinct services:
-1. **Frontend (`Frontend-Apk-Sampah-Ifter`)**: A responsive, cross-platform web application built with Vue 3 and Quasar Framework.
+The **SPS App (Smart Payment System for Waste Management)** is a comprehensive, full-stack platform designed to modernize and digitize waste collection ecosystems. 
+
+This repository unifies two distinct micro-applications:
+1. **Frontend (`Frontend-Apk-Sampah-Ifter`)**: A responsive, cross-platform Single Page Application (SPA) built with Vue 3 and Quasar Framework.
 2. **Backend (`sps-app`)**: A robust RESTful API built with Python and Flask.
 
-The system connects citizens ("Warga"), waste collection officers ("Petugas"), and administrators. It facilitates reporting waste ready for pickup, scheduling operations, visualizing geographic locations, managing digital payments, and calculating officer compensation.
+The system is designed with a strict **Role-Based Access Control (RBAC)** architecture that serves three main user personas:
+- **Admin**: Oversees the entire operation, manages users, schedules pickups, tracks finances, and calculates salaries.
+- **Warga (Citizens)**: Reports waste ready for pickup, tracks their request status, and manages digital payments.
+- **Petugas (Officers)**: Receives schedules, executes waste collection, and tracks their accumulated salary based on the volume of waste collected.
 
-## ✨ Key Features
+---
 
-- **Role-Based Access Control (RBAC):** Secure JWT-based authentication tailoring the UI and API access for Admins, Citizens, and Officers.
-- **Geographic Waste Tracking:** Integration with Leaflet maps to pinpoint waste pickup locations visually on the frontend.
-- **Dynamic Dashboards:** Interactive data visualization using Chart.js and ApexCharts for reporting income, expenses, and operational metrics.
-- **Automated Workflows:** Complete lifecycle tracking from citizen waste reports to officer pickup, automated salary calculation, and system notifications.
-- **Decoupled Architecture:** Clean separation of concerns between the SPA frontend and the REST API backend.
+## ✨ Core Features by Role
 
-## 📂 Folder Structure
+### 👨‍💼 Admin Features
+- **Dashboard & Analytics**: High-level overview of total waste collected, active users, and financial health.
+- **User Management**: Add, edit, and delete data for *Warga* and *Petugas*.
+- **Schedule Management (`jadwal`)**: Create and assign operational zones and waste pickup schedules to specific officers.
+- **Financial Control (`pemasukan`, `pengeluaran`)**: Track all income from citizens and operational expenses.
+- **Salary Generator (`gaji`)**: Dynamically calculate officer salaries based on the recorded volume (sacks) of waste collected.
+
+### 👷 Petugas (Officer) Features
+- **Collection Forms**: Input forms to verify and record waste collection directly from the field.
+- **Performance & Income Tracking**: View historical records of waste collected and estimated accumulated salary.
+
+### 🏡 Warga (Citizen) Features
+- **Waste Reporting**: Request a waste pickup by submitting location details and waste volume.
+- **Live Tracking & Maps (`lokasi`)**: Integrated Leaflet maps to visually pinpoint waste locations.
+- **Notifications**: Real-time updates on the status of their waste pickup (Waiting -> Picked Up -> Completed).
+
+---
+
+## 📂 Detailed Folder Structure
+
+The workspace is strictly decoupled into a Frontend (Client) and Backend (API) architecture.
 
 ```text
 .
-├── Frontend-Apk-Sampah-Ifter/  # Frontend Application (Vue.js / Quasar)
-│   ├── src/                    # Source code (Components, Pages, Pinia Stores, Router)
-│   ├── public/                 # Static assets
-│   ├── quasar.config.js        # Quasar build and configuration parameters
-│   ├── netlify.toml            # Netlify CI/CD configuration for production
-│   └── package.json            # Node.js dependencies and scripts
+├── Frontend-Apk-Sampah-Ifter/     # FRONTEND: Vue.js & Quasar Framework
+│   ├── src/                       # Main source code
+│   │   ├── pages/                 # UI Views grouped by roles
+│   │   │   ├── AdminDashboard.vue, DataPetugas.vue, GajiAdmin.vue...
+│   │   │   ├── PetugasDashboard.vue, FormPengambilanSampah.vue...
+│   │   │   └── UserDashboard.vue, UserLaporan.vue, UserMaps.vue...
+│   │   ├── layouts/               # Base page structures (AdminLayout, UserLayout)
+│   │   ├── router/routes.js       # Vue Router definitions & RBAC Guards
+│   │   ├── stores/                # Pinia State Management (auth, admin, notifikasi)
+│   │   ├── components/            # Reusable UI components (Modals, Trackers)
+│   │   └── utils/                 # Axios HTTP client configuration
+│   ├── quasar.config.js           # Quasar build and development parameters
+│   └── package.json               # Node.js dependencies
 │
-└── sps-app/                    # Backend API Application (Python / Flask)
-    ├── config.py               # Database and application configurations
-    ├── app.py                  # Main Flask application entry point
-    ├── routes/                 # API controllers (Flask Blueprints: auth, warga, petugas, dll)
-    └── spsdb.sql               # MySQL database schema and seed data
+├── sps-app/                       # BACKEND: Python Flask REST API
+│   ├── app.py                     # Application factory and Blueprint registration
+│   ├── config.py                  # Database connection credentials
+│   ├── requirements.txt           # Python dependencies
+│   ├── routes/                    # API Controllers (Flask Blueprints)
+│   │   ├── auth.py                # JWT Login & Registration
+│   │   ├── admin.py, warga.py, petugas.py
+│   │   ├── jadwal.py, laporan.py, lokasi.py
+│   │   └── pemasukan.py, pengeluaran.py, gaji.py
+│   └── spsdb.sql                  # MySQL database schema and seed data
+│
+├── start.sh                       # Unified startup bash script
+└── .gitignore                     # Global gitignore configuration
 ```
+
+---
 
 ## 🏗 System Architecture (Local/Development)
 
-In a local development environment, the frontend runs on a Node.js development server and proxies/communicates via HTTP REST to the Flask backend running on a local Python server. The backend connects directly to a local MySQL instance.
+In the local environment, the system utilizes a standard client-server architecture communicating via RESTful JSON APIs.
 
 ```mermaid
 flowchart LR
@@ -75,33 +112,19 @@ flowchart LR
     style MySQL fill:#4479A1,stroke:#333,color:#fff
 ```
 
+---
+
 ## ☁️ System Architecture (Cloud/Production)
 
-Based on the environment variables and configuration files (`netlify.toml`, `.env`), the production architecture utilizes managed cloud services. The frontend is hosted statically on Netlify, while the backend API targets a cloud Python host (e.g., PythonAnywhere).
+**TIDAK ADA (Not Configured).**
 
-```mermaid
-flowchart LR
-    %% Components
-    User(["📱 End User / Client"])
-    Netlify["⚡ Netlify CDN<br/>(Static SPA Hosting)"]
-    CloudAPI["☁️ Cloud Flask API<br/>(e.g. PythonAnywhere)"]
-    CloudDB[("☁️ Cloud MySQL DB")]
+Currently, there is no explicit cloud architecture, Dockerfiles, Kubernetes manifests, or infrastructure-as-code (Terraform) configurations present in the repository. The project is currently designed to be run locally.
 
-    %% Data Flow
-    User <==>|HTTPS (Static Assets)| Netlify
-    User <==>|HTTPS REST API| CloudAPI
-    CloudAPI <==>|Secure SQL Connection| CloudDB
-
-    %% Styles
-    style User fill:#f9f,stroke:#333,stroke-width:2px
-    style Netlify fill:#00C7B7,stroke:#333,color:#000
-    style CloudAPI fill:#3776AB,stroke:#333,color:#fff
-    style CloudDB fill:#4479A1,stroke:#333,color:#fff
-```
+---
 
 ## 🗄 Database Table Relationship Diagram (TRD/ERD)
 
-The backend relies on a relational MySQL database. The following diagram illustrates the complete table schema, fields, and relationships defined in `spsdb.sql`:
+The backend utilizes a relational MySQL database. The schema is highly normalized to handle the complex financial and scheduling logic of the system.
 
 ```mermaid
 erDiagram
@@ -205,12 +228,6 @@ erDiagram
         int jumlah_karung
         enum status "diambil, selesai, batal"
     }
-    
-    migrations {
-        int id PK
-        varchar migration
-        int batch
-    }
 
     users ||--o| warga : "1:1 (user_id)"
     users ||--o| petugas : "1:1 (user_id)"
@@ -226,57 +243,63 @@ erDiagram
     pengeluaran ||--o{ transaksi : "1:N (id_pengeluaran)"
 ```
 
+---
+
 ## 🛠 Tech Stack
 
-**Frontend**
-- **Framework:** Vue.js 3, Quasar Framework
+**Frontend (Client)**
+- **Framework:** Vue.js 3 & Quasar Framework
 - **State Management:** Pinia
+- **Routing:** Vue Router
 - **HTTP Client:** Axios
 - **Data Visualization:** Chart.js, ApexCharts (`vue3-apexcharts`)
 - **Mapping:** Leaflet, `leaflet.awesome-markers`
 
-**Backend**
-- **Framework:** Python 3, Flask, Flask-CORS
+**Backend (API)**
+- **Framework:** Python 3 & Flask
+- **CORS:** Flask-CORS
 - **Authentication:** PyJWT, Werkzeug (Password Hashing)
 - **Database Driver:** PyMySQL
 
-**Database & Infrastructure**
-- **Database:** MySQL / MariaDB
-- **DevOps:** Netlify (Frontend Hosting)
+**Database**
+- **Engine:** MySQL / MariaDB
+
+---
 
 ## 🚀 Getting Started / Installation
 
-You must run both the frontend and backend services simultaneously to use the application locally. We have provided a convenient `start.sh` script to launch both automatically.
+We have provided a fully dynamic `start.sh` script to launch both the frontend and backend automatically. 
 
 ### Prerequisites
-1. **Python 3** and **Node.js (v20+)** must be installed on your machine.
+1. **Python 3** and **Node.js (v20+)** must be installed on your system.
+   > **Note:** We strongly recommend installing Node.js via [NVM (Node Version Manager)](https://github.com/nvm-sh/nvm) to avoid permission issues.
 2. **MySQL** / MariaDB must be installed and running.
-3. **Database Setup:** 
-   - Create a local MySQL database named `spsdb` and import the schema:
-     ```bash
-     cd sps-app
-     mysql -u root -p spsdb < spsdb.sql
-     ```
-   - Update `sps-app/config.py` with your local MySQL credentials.
-4. **Python Dependencies:** The `start.sh` script automatically handles setting up a Python virtual environment (`venv`) and installing dependencies from `requirements.txt`. You do not need to install them manually.
+
+### Database Setup
+1. Create a local MySQL database named `spsdb`.
+2. Import the provided schema:
+   ```bash
+   cd sps-app
+   mysql -u root -p spsdb < spsdb.sql
+   ```
+3. Update `sps-app/config.py` with your local MySQL credentials (`user`, `password`, `host`).
 
 ### Running the Application
 
-To start both the frontend and backend simultaneously, simply run the `start.sh` script from the project root:
+To start both the frontend and backend simultaneously, run:
 
 ```bash
 ./start.sh
 ```
 
-**What this script does:**
-1. Starts the **Flask API (Backend)** on `http://127.0.0.1:5000`.
-2. Automatically installs NPM dependencies (if they don't exist) and starts the **Vue/Quasar Server (Frontend)**.
-3. Automatically stops both servers gracefully when you press `CTRL+C`.
+**What this dynamic script does:**
+1. **Auto-Detects Environment:** It intelligently checks if Python and NPM are installed.
+2. **Virtual Environment Setup:** Automatically creates a Python `venv` (handling Windows/Linux paths) and runs `pip install -r requirements.txt`.
+3. **NPM Installation:** Automatically runs `npm install` if `node_modules` is missing.
+4. **Execution:** Starts the **Flask API** on `http://127.0.0.1:5000` and the **Vue/Quasar Frontend** on `http://localhost:9000`.
+5. **Graceful Shutdown:** Safely shuts down both servers when you press `CTRL+C`.
 
-## 🔄 CI/CD & Deployment
-
-- **Frontend Pipeline:** The frontend utilizes Netlify for CI/CD. The `netlify.toml` file automatically triggers `quasar build` on deployment, publishing the `dist/spa` directory and handling SPA routing redirects.
-- **Backend Pipeline:** Continuous Integration/Deployment is not explicitly configured in the repository (e.g., no GitHub Actions or Dockerfiles). Deployment requires manual setup of a WSGI environment or a managed cloud platform capable of running Python Flask applications.
+---
 
 ## 📄 License
 
