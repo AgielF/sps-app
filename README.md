@@ -47,16 +47,32 @@ The system connects citizens ("Warga"), waste collection officers ("Petugas"), a
 In a local development environment, the frontend runs on a Node.js development server and proxies/communicates via HTTP REST to the Flask backend running on a local Python server. The backend connects directly to a local MySQL instance.
 
 ```mermaid
-flowchart TD
-    Browser([Developer Browser]) <-->|HTTP :9000| Quasar[Vue/Quasar Dev Server\n(Frontend)]
-    Quasar <-->|HTTP REST / JSON| Flask[Flask API\n(Backend)]
-    
-    subgraph Backend Services
-        Flask <--> Auth[Auth Blueprint]
-        Flask <--> Operations[Operations Blueprints]
+flowchart LR
+    %% Components
+    Browser(["🌐 Developer Browser"])
+    Quasar["💻 Vue/Quasar Dev Server<br/>(Frontend :9000)"]
+    Flask["⚙️ Flask API Server<br/>(Backend :5000)"]
+    MySQL[("🗄️ Local MySQL DB<br/>(spsdb)")]
+
+    %% Data Flow
+    Browser <==>|HTTP| Quasar
+    Quasar <==>|REST API / JSON| Flask
+    Flask <==>|PyMySQL| MySQL
+
+    %% Subgraph Architecture
+    subgraph Backend [Flask Backend Architecture]
+        Flask
+        Auth["Auth Blueprint"]
+        Ops["Operations Blueprints"]
+        Flask --- Auth
+        Flask --- Ops
     end
-    
-    Backend Services <-->|PyMySQL| MySQL[(Local MySQL DB\nspsdb)]
+
+    %% Styles
+    style Browser fill:#f9f,stroke:#333,stroke-width:2px
+    style Quasar fill:#4FC08D,stroke:#333,color:#fff
+    style Flask fill:#000,stroke:#333,color:#fff
+    style MySQL fill:#4479A1,stroke:#333,color:#fff
 ```
 
 ## ☁️ System Architecture (Cloud/Production)
@@ -64,11 +80,23 @@ flowchart TD
 Based on the environment variables and configuration files (`netlify.toml`, `.env`), the production architecture utilizes managed cloud services. The frontend is hosted statically on Netlify, while the backend API targets a cloud Python host (e.g., PythonAnywhere).
 
 ```mermaid
-flowchart TD
-    User([End User / Client]) <-->|HTTPS| Netlify[Netlify CDN\n(Hosts compiled SPA)]
-    User <-->|HTTPS REST| PythonAnywhere[Cloud Flask API\n(e.g., PythonAnywhere)]
-    
-    PythonAnywhere <-->|SQL| CloudDB[(Cloud MySQL Database)]
+flowchart LR
+    %% Components
+    User(["📱 End User / Client"])
+    Netlify["⚡ Netlify CDN<br/>(Static SPA Hosting)"]
+    CloudAPI["☁️ Cloud Flask API<br/>(e.g. PythonAnywhere)"]
+    CloudDB[("☁️ Cloud MySQL DB")]
+
+    %% Data Flow
+    User <==>|HTTPS (Static Assets)| Netlify
+    User <==>|HTTPS REST API| CloudAPI
+    CloudAPI <==>|Secure SQL Connection| CloudDB
+
+    %% Styles
+    style User fill:#f9f,stroke:#333,stroke-width:2px
+    style Netlify fill:#00C7B7,stroke:#333,color:#000
+    style CloudAPI fill:#3776AB,stroke:#333,color:#fff
+    style CloudDB fill:#4479A1,stroke:#333,color:#fff
 ```
 
 ## 🗄 Database Table Relationship Diagram (TRD/ERD)
