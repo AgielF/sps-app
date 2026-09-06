@@ -245,6 +245,32 @@ erDiagram
 
 ---
 
+## 🔌 Backend API Routes
+
+The RESTful API is structured into several Blueprints (modules) representing different entities and business logic:
+
+- **🔐 Auth (`/api/auth`)**
+  - `POST /register`, `POST /login`, `POST /logout`
+- **🏡 Warga (`/api/warga`)**
+  - `GET /`, `POST /create`, `GET /<id>`, `GET /by-user/<user_id>`
+- **👷 Petugas (`/api/petugas`)**
+  - `GET /`, `POST /create`, `DELETE /<id>`, `GET /by-user/<user_id>`, `GET /tugas`, `POST /tugas/<id>/ambil`, `GET /rekap`
+- **📅 Jadwal (`/api/jadwal`)**
+  - `GET /`, `POST /`, `GET /today`, `GET /week`, `POST /multi`, `GET /list`, `GET /<id>`, `PATCH /<id>`, `PATCH /<id>/toggle-status`
+- **📢 Laporan (`/api/laporan`)**
+  - `GET /`, `POST /`, `GET /<id>`, `PATCH /<id>/status`
+- **💰 Finance (`/api/pemasukan`, `/api/pengeluaran`, `/api/gaji`)**
+  - *Pemasukan*: `GET /`, `POST /`, `GET /<id>`
+  - *Pengeluaran*: `GET /`, `POST /`, `GET /<id>`
+  - *Gaji*: `GET /`
+- **📜 Riwayat (`/api/riwayat`, `/api/riwayat_admin`)**
+  - *User/Petugas*: `GET /`, `GET /bulan-tersedia`, `GET /warga/<id>`
+  - *Admin*: `GET /`
+- **📍 Lokasi (`/api/lokasi`)**
+  - `GET /petugas`
+
+---
+
 ## 🛠 Tech Stack
 
 **Frontend (Client)**
