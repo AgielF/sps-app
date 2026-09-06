@@ -56,7 +56,15 @@ def login():
             "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=8)
         }
         token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
-        return jsonify({"token": token})
+        
+        # Format user response to exclude password
+        user_response = {
+            "id": user['id'],
+            "username": user['username'],
+            "role": user['role']
+        }
+        
+        return jsonify({"token": token, "user": user_response})
     else:
         return jsonify({"message": "Invalid credentials"}), 401
 
