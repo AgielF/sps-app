@@ -218,45 +218,35 @@ erDiagram
 
 ## 🚀 Getting Started / Installation
 
-You must run both the frontend and backend services simultaneously to use the application locally.
+You must run both the frontend and backend services simultaneously to use the application locally. We have provided a convenient `start.sh` script to launch both automatically.
 
-### 1. Backend Setup (`sps-app`)
-1. Ensure Python 3 and MySQL are installed on your machine.
-2. Navigate to the backend directory:
-   ```bash
-   cd sps-app
-   ```
-3. Create a local MySQL database named `spsdb` and import the schema:
-   ```bash
-   mysql -u root -p spsdb < spsdb.sql
-   ```
-4. Update `config.py` with your MySQL credentials.
-5. Install Python dependencies:
+### Prerequisites
+1. **Python 3** and **Node.js (v20+)** must be installed on your machine.
+2. **MySQL** / MariaDB must be installed and running.
+3. **Database Setup:** 
+   - Create a local MySQL database named `spsdb` and import the schema:
+     ```bash
+     cd sps-app
+     mysql -u root -p spsdb < spsdb.sql
+     ```
+   - Update `sps-app/config.py` with your local MySQL credentials.
+4. **Python Dependencies:** Install the required backend packages:
    ```bash
    pip install Flask Flask-Cors PyMySQL PyJWT Werkzeug
    ```
-6. Start the Flask API:
-   ```bash
-   python app.py
-   ```
-   *The backend will run on `http://127.0.0.1:5000`.*
 
-### 2. Frontend Setup (`Frontend-Apk-Sampah-Ifter`)
-1. Ensure Node.js (v20+) and npm are installed.
-2. Open a new terminal and navigate to the frontend directory:
-   ```bash
-   cd Frontend-Apk-Sampah-Ifter
-   ```
-3. Install Node modules:
-   ```bash
-   npm install
-   ```
-4. Verify that the `.env` file points to your local backend (if testing locally, change `VITE_API_URL` to `http://127.0.0.1:5000`, otherwise it points to production).
-5. Start the Quasar development server:
-   ```bash
-   npm run dev
-   ```
-   *The frontend will open in your browser automatically.*
+### Running the Application
+
+To start both the frontend and backend simultaneously, simply run the `start.sh` script from the project root:
+
+```bash
+./start.sh
+```
+
+**What this script does:**
+1. Starts the **Flask API (Backend)** on `http://127.0.0.1:5000`.
+2. Automatically installs NPM dependencies (if they don't exist) and starts the **Vue/Quasar Server (Frontend)**.
+3. Automatically stops both servers gracefully when you press `CTRL+C`.
 
 ## 🔄 CI/CD & Deployment
 
