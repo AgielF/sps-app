@@ -40,6 +40,19 @@ The system is designed with a strict **Role-Based Access Control (RBAC)** archit
 - **Live Tracking & Maps (`lokasi`)**: Integrated Leaflet maps to visually pinpoint waste locations.
 - **Notifications**: Real-time updates on the status of their waste pickup (Waiting -> Picked Up -> Completed).
 
+### 🔐 RBAC Feature Matrix
+
+| Module / Feature | Admin (`admin`) | Petugas (`petugas`) | Warga (`user`) |
+|-------------------|:---:|:---:|:---:|
+| **Dashboard Analytics** | ✅ Full Access | ✅ Personal Stats | ✅ Personal Stats |
+| **Manage Warga & Petugas** | ✅ Read/Write | ❌ Denied | ❌ Denied |
+| **Schedule (Jadwal)** | ✅ Read/Write | ✅ Read Only | ❌ Denied |
+| **Waste Reports (Laporan)** | ✅ Read/Update Status | ✅ Update Status (Ambil) | ✅ Create/Read |
+| **Live Tracking (Maps)** | ❌ Denied | ❌ Denied | ✅ Full Access |
+| **Finance (Income/Expense)** | ✅ Full Access | ❌ Denied | ❌ Denied |
+| **Salary Calculation (Gaji)** | ✅ Manage & Generate | ✅ View Own Salary | ❌ Denied |
+| **History (Riwayat)** | ✅ System-Wide | ✅ Own Activities | ✅ Own Activities |
+
 ---
 
 ## 📂 Detailed Folder Structure
