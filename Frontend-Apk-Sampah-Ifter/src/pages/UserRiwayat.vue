@@ -879,6 +879,7 @@
 </template>
 
 <script setup>
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import axios from 'axios'
@@ -886,6 +887,9 @@ import { useRouter } from 'vue-router'
 
 const $q = useQuasar()
 const router = useRouter()
+
+// Get User ID
+const userId = localStorage.getItem('user_id') || 1
 
 // State utama
 const semuaRiwayat = ref([])
@@ -1074,7 +1078,7 @@ const loadDaftarBulan = async () => {
   loadingBulan.value = true
   try {
     const res = await axios.get(
-      'http://127.0.0.1:5000/api/riwayat/user/bulan-tersedia',
+      `${API_URL}/api/riwayat/user/bulan-tersedia`,
       {
         headers: getAuthHeaders(),
       },
@@ -1146,7 +1150,7 @@ const loadRiwayat = async () => {
 
     console.log('Param yang dikirim:', params) // Debug
 
-    const res = await axios.get('http://127.0.0.1:5000/api/riwayat/user', {
+    const res = await axios.get(`${API_URL}/api/riwayat/warga/${userId}`, {
       params,
       headers: getAuthHeaders(),
     })
@@ -1180,7 +1184,7 @@ const loadStats = async () => {
 
     console.log('Param stats:', params) // Debug
 
-    const res = await axios.get('http://127.0.0.1:5000/api/riwayat/user/stats', {
+    const res = await axios.get(`${API_URL}/api/riwayat/warga/${userId}/stats`, {
       params,
       headers: getAuthHeaders(),
     })
@@ -1206,7 +1210,7 @@ const loadSaldo = async () => {
   try {
     const userId = localStorage.getItem('user_id')
     const res = await axios.get(
-      `http://127.0.0.1:5000/api/warga/by-user/${userId}`,
+      `${API_URL}/api/warga/by-user/${userId}`,
       {
         headers: getAuthHeaders(),
       },
@@ -1378,7 +1382,7 @@ const getDisplayJumlahKarung = (item) => {
 
 const loadLaporanDetail = async (id) => {
   try {
-    const res = await axios.get(`http://127.0.0.1:5000/api/riwayat/laporan/${id}`, {
+    const res = await axios.get(`${API_URL}/api/laporan/${id}`, {
       headers: getAuthHeaders(),
     })
 
@@ -1395,7 +1399,7 @@ const loadLaporanDetail = async (id) => {
 const loadTransaksiDetail = async (id) => {
   try {
     const res = await axios.get(
-      `http://127.0.0.1:5000/api/riwayat/transaksi/${id}`,
+      `${API_URL}/api/riwayat/transaksi/${id}`,
       {
         headers: getAuthHeaders(),
       },
@@ -1423,13 +1427,9 @@ const batalkanLaporan = async (item) => {
     persistent: true,
   }).onOk(async () => {
     try {
-      const res = await axios.put(
-        `http://127.0.0.1:5000/api/riwayat/laporan/${item.id}/batal`,
-        {},
-        {
-          headers: getAuthHeaders(),
-        },
-      )
+      const res = await axios.delete(`${API_URL}/api/laporan/${item.id}`, {
+        headers: getAuthHeaders(),
+      })
 
       if (res.data.success) {
         showNotificationFn('positive', 'Laporan berhasil dibatalkan', 'check_circle')
@@ -1450,11 +1450,9 @@ const konfirmasiSelesai = async (item) => {
     persistent: true,
   }).onOk(async () => {
     try {
-      const res = await axios.put(
-        `http://127.0.0.1:5000/api/riwayat/laporan/${item.id}/selesai`,
-        {
-          catatan: 'Dikonfirmasi selesai oleh user',
-        },
+      const res = await axios.patch(
+        `${API_URL}/api/laporan/${item.id}/status`,
+        { status: 'selesai' },
         {
           headers: getAuthHeaders(),
         },
@@ -1485,7 +1483,7 @@ const doExport = async () => {
     if (bulanDipilih.value) params.bulan = bulanDipilih.value
 
     // Note: You'll need to implement the export endpoint
-    // const res = await axios.get('http://127.0.0.1:5000/api/riwayat/export', {
+    // const res = await axios.get(`${API_URL}/api/riwayat/export`, {
     //   params,
     //   headers: getAuthHeaders(),
     //   responseType: 'blob'

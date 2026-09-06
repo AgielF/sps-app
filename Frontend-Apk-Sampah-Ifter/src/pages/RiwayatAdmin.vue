@@ -226,7 +226,6 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'
 
 // Refs
 const loading = ref(false)
-const loadingChart = ref(false)
 const aktivitasList = ref([])
 const chartCanvas = ref(null)
 let chartInstance = null
@@ -300,7 +299,7 @@ const loadAktivitas = async () => {
     const token = localStorage.getItem('token')
 
     // Load aktivitas
-    const res = await axios.get(`${API_URL}/api/log/aktivitas`, {
+    const res = await axios.get(`${API_URL}/api/riwayat_admin/`, {
       headers: { Authorization: `Bearer ${token}` },
       params: filterParams.value,
     })
@@ -312,13 +311,8 @@ const loadAktivitas = async () => {
       calculateStats(res.data.data)
     }
 
-    // Load summary
-    await loadSummary()
-
-    // Load chart
-    await loadChart()
-
-    // Load kategori options dari data
+    // Extract options
+    extractKategoriOptions()
     extractKategoriOptions()
   } catch (error) {
     console.error('Error loading aktivitas:', error)
@@ -329,48 +323,6 @@ const loadAktivitas = async () => {
     })
   } finally {
     loading.value = false
-  }
-}
-
-const loadSummary = async () => {
-  try {
-    const token = localStorage.getItem('token')
-    const res = await axios.get(`${API_URL}/api/log/summary`, {
-      headers: { Authorization: `Bearer ${token}` },
-      params: filterParams.value,
-    })
-
-    if (res.data.success) {
-      const data = res.data.data
-      if (data.totals) {
-        stats.value.totalAktivitas = data.totals.total_aktivitas || 0
-        stats.value.totalPemasukan = data.totals.total_pemasukan || 0
-        stats.value.totalPengeluaran = data.totals.total_pengeluaran || 0
-        stats.value.saldo =
-          (data.totals.total_pemasukan || 0) - (data.totals.total_pengeluaran || 0)
-      }
-    }
-  } catch (error) {
-    console.error('Error loading summary:', error)
-  }
-}
-
-const loadChart = async () => {
-  loadingChart.value = true
-  try {
-    const token = localStorage.getItem('token')
-    const res = await axios.get(`${API_URL}/api/log/harian`, {
-      headers: { Authorization: `Bearer ${token}` },
-      params: { days: 7 },
-    })
-
-    if (res.data.success && chartCanvas.value) {
-      renderChart(res.data.data)
-    }
-  } catch (error) {
-    console.error('Error loading chart:', error)
-  } finally {
-    loadingChart.value = false
   }
 }
 
@@ -420,10 +372,10 @@ const calculateStats = (data) => {
   let pengeluaran = 0
 
   data.forEach((item) => {
-    if (item.jenis === 'pemasukan') {
-      pemasukan += parseFloat(item.jumlah)
-    } else if (['pengeluaran', 'gaji'].includes(item.jenis)) {
-      pengeluaran += parseFloat(item.jumlah)
+    if (item.type === 'Pemasukan') {
+      pemasukan += parseFloat(item.amount || 0)
+    } else if (item.type === 'Pengeluaran') {
+      pengeluaran += parseFloat(item.amount || 0)
     }
   })
 
@@ -431,13 +383,61 @@ const calculateStats = (data) => {
   stats.value.totalPengeluaran = pengeluaran
   stats.value.saldo = pemasukan - pengeluaran
   stats.value.totalAktivitas = data.length
+
+  // Aggregation for chart (last 7 days)
+  if (chartCanvas.value) {
+    const today = new Date()
+    const labels = []
+    const pemasukanData = []
+    const pengeluaranData = []
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today)
+      d.setDate(d.getDate() - i)
+      const dateStr = d.toISOString().split('T')[0]
+      labels.push(d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }))
+
+      const items = data.filter((item) => item.tanggal && item.tanggal.startsWith(dateStr))
+      const sumMasuk = items
+        .filter((item) => item.type === 'Pemasukan')
+        .reduce((sum, item) => sum + parseFloat(item.amount || 0), 0)
+      const sumKeluar = items
+        .filter((item) => item.type === 'Pengeluaran')
+        .reduce((sum, item) => sum + parseFloat(item.amount || 0), 0)
+
+      pemasukanData.push(sumMasuk)
+      pengeluaranData.push(sumKeluar)
+    }
+
+    renderChart({
+      labels,
+      datasets: [
+        {
+          label: 'Pemasukan',
+          data: pemasukanData,
+          borderColor: '#4caf50',
+          backgroundColor: 'rgba(76, 175, 80, 0.1)',
+          fill: true,
+          tension: 0.4
+        },
+        {
+          label: 'Pengeluaran',
+          data: pengeluaranData,
+          borderColor: '#f44336',
+          backgroundColor: 'rgba(244, 67, 54, 0.1)',
+          fill: true,
+          tension: 0.4
+        },
+      ],
+    })
+  }
 }
 
 const extractKategoriOptions = () => {
   const categories = new Set()
   aktivitasList.value.forEach((item) => {
-    if (item.kategori) {
-      categories.add(item.kategori)
+    if (item.type) {
+      categories.add(item.type)
     }
   })
 
@@ -470,7 +470,7 @@ const exportData = async () => {
     if (filter.value.kategori)
       params.append('kategori', filter.value.kategori.value || filter.value.kategori)
 
-    const url = `${API_URL}/api/log/export-csv?${params.toString()}`
+    const url = `${API_URL}/api/riwayat_admin/export-csv?${params.toString()}`
 
     // Fetch dengan headers
     const response = await fetch(url, {

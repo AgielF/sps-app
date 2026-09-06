@@ -522,7 +522,7 @@ const fetchStatistikHariIni = async () => {
 
     if (!petugasId) return
 
-    const response = await api.get(`/api/transaksi/statistik/petugas/${petugasId}`, {
+    const response = await api.get(`/api/petugas/statistik/${petugasId}`, {
       headers: { Authorization: `Bearer ${token}` },
       params: { tanggal: todayStr },
     })
@@ -550,7 +550,7 @@ const fetchJadwal = async () => {
 
     const todayStr = date.formatDate(today, 'YYYY-MM-DD')
 
-    const response = await api.get(`/api/jadwal/petugas/${petugasId}`, {
+    const response = await api.get(`/api/jadwal?id_petugas=${petugasId}`, {
       headers: { Authorization: `Bearer ${token}` },
       params: {
         tanggal: todayStr,

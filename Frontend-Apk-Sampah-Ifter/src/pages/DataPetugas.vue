@@ -343,9 +343,8 @@ const editItem = (petugas) => {
 
 const assignShift = (petugas) => {
   router.push({
-    name: 'JadwalPetugas',
-    params: { id: petugas.id },
-    query: { nama: petugas.nama_petugas },
+    name: 'ListJadwal',
+    query: { search: petugas.nama_petugas },
   })
 }
 

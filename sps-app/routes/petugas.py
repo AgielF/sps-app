@@ -23,13 +23,23 @@ def map_status_for_ui(db_status: str) -> str:
 # =========================
 # GET semua petugas
 # =========================
-@petugas_bp.route('/', methods=['GET'])
+@petugas_bp.route('/', methods=['GET'], strict_slashes=False)
 def get_petugas():
     conn = get_connection()
     try:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT * FROM petugas ORDER BY id DESC")
+            cursor.execute("""
+                SELECT p.*, u.username, u.status as user_status 
+                FROM petugas p
+                LEFT JOIN users u ON p.user_id = u.id
+                ORDER BY p.id DESC
+            """)
             rows = cursor.fetchall()
+            
+            # Map status_kerja as status for frontend compatibility
+            for row in rows:
+                if 'status_kerja' in row:
+                    row['status'] = row['status_kerja']
         return jsonify({"success": True, "data": rows}), 200
     except Exception as e:
         print("get_petugas error:", e)
@@ -39,11 +49,49 @@ def get_petugas():
 
 
 # =========================
+# GET statistik petugas
+# =========================
+@petugas_bp.route('/statistik/<int:id_petugas>', methods=['GET'])
+def get_statistik_petugas(id_petugas):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Hitung total karung dan gaji (estimasi sederhana)
+            cursor.execute("""
+                SELECT COALESCE(SUM(jumlah_karung), 0) as total_karung 
+                FROM riwayat_aktivitas 
+                WHERE id_petugas = %s AND status = 'Selesai'
+            """, (id_petugas,))
+            res = cursor.fetchone()
+            total_karung = res['total_karung'] if res else 0
+            
+            # Asumsi gaji per karung Rp. 5000 (sesuai gaji.py / frontend)
+            total_gaji = total_karung * 5000
+
+            data = {
+                "total_karung": total_karung,
+                "total_gaji": total_gaji
+            }
+        return jsonify({"success": True, "data": data}), 200
+    except Exception as e:
+        print("get_statistik_petugas error:", e)
+        return jsonify({"success": False, "message": "Server error"}), 500
+    finally:
+        conn.close()
+
+# =========================
 # CREATE petugas + user
 # =========================
 @petugas_bp.route('/create', methods=['POST'])
 def create_petugas():
-    data = request.json
+    data = request.json or {}
+    
+    # Map frontend payload keys
+    nama_petugas = data.get('nama_lengkap') or data.get('nama_petugas')
+    no_telp = data.get('no_telepon') or data.get('no_telp')
+    data['nama_petugas'] = nama_petugas
+    data['no_telp'] = no_telp
+    
     required = ['username', 'password', 'nama_petugas', 'no_telp', 'alamat']
 
     for field in required:
@@ -54,23 +102,135 @@ def create_petugas():
     try:
         with conn.cursor() as cursor:
             hashed_pass = generate_password_hash(data['password'])
+            status_kerja = data.get('status_kerja', 'aktif')
+            user_status = 'active' if status_kerja == 'aktif' else 'inactive'
+            
             cursor.execute("""
                 INSERT INTO users (username, password, role, status)
                 VALUES (%s, %s, %s, %s)
-            """, (data['username'], hashed_pass, 'petugas', 'active'))
+            """, (data['username'], hashed_pass, 'petugas', user_status))
 
             user_id = cursor.lastrowid
 
             cursor.execute("""
-                INSERT INTO petugas (user_id, nama_petugas, no_telp, alamat)
-                VALUES (%s, %s, %s, %s)
-            """, (user_id, data['nama_petugas'], data['no_telp'], data['alamat']))
+                INSERT INTO petugas (user_id, nama_petugas, no_telp, alamat, email, nik, status_kerja, gaji_per_karung)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                user_id, 
+                nama_petugas, 
+                no_telp, 
+                data['alamat'],
+                data.get('email'),
+                data.get('nik'),
+                data.get('status_kerja', 'aktif'),
+                data.get('gaji_per_karung', 5000)
+            ))
 
         conn.commit()
         return jsonify({"success": True, "message": "Petugas berhasil dibuat"}), 201
+    except pymysql.err.IntegrityError as e:
+        conn.rollback()
+        if e.args[0] == 1062:
+            return jsonify({"success": False, "message": "Username sudah digunakan, silakan pilih username lain."}), 400
+        print("create_petugas integrity error:", e)
+        return jsonify({"success": False, "message": "Terjadi kesalahan pada database (Duplicate)"}), 400
     except Exception as e:
         conn.rollback()
         print("create_petugas error:", e)
+        return jsonify({"success": False, "message": "Server error"}), 500
+    finally:
+        conn.close()
+
+# =========================
+# GET petugas by id
+# =========================
+@petugas_bp.route('/<int:id>', methods=['GET'])
+def get_petugas_by_id(id):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT p.*, u.username 
+                FROM petugas p
+                JOIN users u ON p.user_id = u.id
+                WHERE p.id = %s
+            """, (id,))
+            row = cursor.fetchone()
+            if not row:
+                return jsonify({"success": False, "message": "Data tidak ditemukan"}), 404
+            
+            # Map back to what frontend expects
+            row['nama_lengkap'] = row.get('nama_petugas')
+            row['no_telepon'] = row.get('no_telp')
+            
+            return jsonify({"success": True, "data": row}), 200
+    except Exception as e:
+        print("get_petugas_by_id error:", e)
+        return jsonify({"success": False, "message": "Server error"}), 500
+    finally:
+        conn.close()
+
+# =========================
+# UPDATE petugas
+# =========================
+@petugas_bp.route('/<int:id>', methods=['PUT'])
+def update_petugas(id):
+    data = request.json or {}
+    
+    # Map frontend payload keys
+    nama_petugas = data.get('nama_lengkap') or data.get('nama_petugas')
+    no_telp = data.get('no_telepon') or data.get('no_telp')
+    data['nama_petugas'] = nama_petugas
+    data['no_telp'] = no_telp
+    
+    required = ['username', 'nama_petugas', 'no_telp', 'alamat']
+
+    for field in required:
+        if field not in data or data[field] == '':
+            return jsonify({"success": False, "message": f"{field} wajib diisi"}), 400
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Update petugas
+            cursor.execute("""
+                UPDATE petugas 
+                SET nama_petugas=%s, no_telp=%s, alamat=%s, email=%s, nik=%s, status_kerja=%s, gaji_per_karung=%s
+                WHERE id=%s
+            """, (
+                nama_petugas, 
+                no_telp, 
+                data['alamat'],
+                data.get('email'),
+                data.get('nik'),
+                data.get('status_kerja', 'aktif'),
+                data.get('gaji_per_karung', 5000),
+                id
+            ))
+            
+            # Update user info (username + password + status)
+            status_kerja = data.get('status_kerja', 'aktif')
+            user_status = 'active' if status_kerja == 'aktif' else 'inactive'
+            
+            if data.get('password'):
+                hashed_pass = generate_password_hash(data['password'])
+                cursor.execute("""
+                    UPDATE users 
+                    SET username=%s, password=%s, status=%s 
+                    WHERE id=(SELECT user_id FROM petugas WHERE id=%s)
+                """, (data['username'], hashed_pass, user_status, id))
+            else:
+                cursor.execute("""
+                    UPDATE users 
+                    SET username=%s, status=%s 
+                    WHERE id=(SELECT user_id FROM petugas WHERE id=%s)
+                """, (data['username'], user_status, id))
+
+        conn.commit()
+        return jsonify({"success": True, "message": "Petugas berhasil diupdate"}), 200
+    except Exception as e:
+        conn.rollback()
+        print("update_petugas error:", e)
         return jsonify({"success": False, "message": "Server error"}), 500
     finally:
         conn.close()
@@ -334,6 +494,53 @@ def rekap_pengambilan():
 
     except Exception as e:
         print("rekap_pengambilan error:", e)
+        return jsonify({"success": False, "message": "Server error"}), 500
+    finally:
+        conn.close()
+@petugas_bp.route('/transaksi', methods=['GET', 'OPTIONS'])
+def get_petugas_transaksi():
+    if request.method == 'OPTIONS': return '', 200
+    tanggal = request.args.get('tanggal')
+    jenis = request.args.get('jenis')
+    
+    conn = get_connection()
+    try:
+        with conn.cursor() as cursor:
+            # We return a dummy but functional structure since the full financial mapping isn't fully set up for petugas transactions yet
+            
+            sql = """
+                SELECT 
+                    id, 
+                    created_at as tanggal,
+                    'Pemasukan' as jenis,
+                    CAST(jumlah_pembayaran AS UNSIGNED) as jumlah,
+                    CONCAT('Pembayaran Laporan #', id) as keterangan,
+                    'Selesai' as status,
+                    'Uang Tunai' as metode_pembayaran,
+                    id_petugas as petugas_id,
+                    'Petugas' as nama_petugas,
+                    id_warga as warga_id,
+                    'Warga' as nama_warga
+                FROM laporan_sampah
+                WHERE id_petugas IS NOT NULL AND status = 'Selesai'
+            """
+            cursor.execute(sql)
+            transactions = cursor.fetchall()
+            
+            summary = {
+                "pemasukan": sum([t['jumlah'] for t in transactions if t['jenis'] == 'Pemasukan']),
+                "pengeluaran": 0,
+                "saldo": sum([t['jumlah'] for t in transactions if t['jenis'] == 'Pemasukan']),
+                "transaksi_saya": len(transactions),
+                "pemasukan_saya": sum([t['jumlah'] for t in transactions if t['jenis'] == 'Pemasukan']),
+                "total_transaksi": len(transactions),
+                "transaksi_lunas": len(transactions),
+                "transaksi_pending": 0,
+            }
+
+        return jsonify({"success": True, "data": transactions, "summary": summary}), 200
+    except Exception as e:
+        print("get_petugas_transaksi error:", e)
         return jsonify({"success": False, "message": "Server error"}), 500
     finally:
         conn.close()

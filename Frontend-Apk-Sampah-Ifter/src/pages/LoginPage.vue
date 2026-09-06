@@ -65,17 +65,18 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
-import { useQuasar } from 'quasar'
 import { jwtDecode } from 'jwt-decode'
+import { useAuth } from 'src/composables/useAuth'
+import { useNotify } from 'src/composables/useNotify'
 
+// Setup composables
 const router = useRouter()
-const $q = useQuasar()
+const { login, loading } = useAuth()
+const { notifyError, notifySuccess, notifyInfo } = useNotify()
 
 const username = ref('')
 const password = ref('')
 const showPwd = ref(false)
-const loading = ref(false)
 
 // Clear auth data
 const clearAuthData = () => {
@@ -127,98 +128,29 @@ onMounted(() => {
 const handleLogin = async () => {
   // Validasi input
   if (!username.value.trim() || !password.value.trim()) {
-    $q.notify({
-      message: 'Username dan Kata Sandi wajib diisi!',
-      color: 'negative',
-      icon: 'warning',
-      position: 'top',
-      timeout: 3000,
-    })
+    notifyError('Username dan Kata Sandi wajib diisi!')
     return
   }
 
-  loading.value = true
-
   try {
-    // Kirim request login
-    const response = await axios.post('http://127.0.0.1:5000/api/auth/login', {
+    const response = await login({
       username: username.value,
       password: password.value,
     })
 
-    const { token, user } = response.data
-
-    // Simpan token ke localStorage
-    localStorage.setItem('token', token)
-
-    // Simpan data user lengkap
-    localStorage.setItem('userData', JSON.stringify(user))
-    localStorage.setItem('username', user.username)
-    localStorage.setItem('role', user.role)
-    localStorage.setItem('user_id', user.id)
-
-    // Notifikasi sukses
-    $q.notify({
-      message: `Selamat datang, ${user.nama || user.username}!`,
-      color: 'positive',
-      icon: 'check_circle',
-      position: 'top',
-      timeout: 2000,
-    })
-
-    // Redirect berdasarkan role
-    redirectByRole(user.role)
+    if (response && response.success) {
+      notifySuccess(`Selamat datang, ${response.user.nama || response.user.username}!`)
+      redirectByRole(response.user.role)
+    }
   } catch (error) {
     console.error('Login error:', error)
-
-    let errorMessage = 'Terjadi kesalahan pada server'
-
-    // Handle error response dari server
-    if (error.response) {
-      switch (error.response.status) {
-        case 401:
-          errorMessage = 'Username atau password salah'
-          break
-        case 404:
-          errorMessage = 'Username tidak ditemukan'
-          break
-        case 400:
-          errorMessage = 'Data tidak lengkap'
-          break
-        case 403:
-          errorMessage = 'Akun tidak aktif'
-          break
-        case 500:
-          errorMessage = 'Server sedang mengalami masalah'
-          break
-      }
-    } else if (error.request) {
-      // Request dibuat tapi tidak ada response
-      errorMessage = 'Tidak dapat terhubung ke server'
-    }
-
-    // Tampilkan notifikasi error
-    $q.notify({
-      message: errorMessage,
-      color: 'negative',
-      icon: 'error',
-      position: 'top',
-      timeout: 3000,
-    })
-  } finally {
-    loading.value = false
+    notifyError(error.message || 'Login gagal')
   }
 }
 
 // Handle lupa sandi
 const lupaSandi = () => {
-  $q.notify({
-    message: 'Silahkan gunakan tombol "Hubungi Admin" di bawah untuk bantuan reset sandi.',
-    color: 'info',
-    icon: 'info',
-    position: 'top',
-    timeout: 4000,
-  })
+  notifyInfo('Silahkan gunakan tombol "Hubungi Admin" di bawah untuk bantuan reset sandi.')
 }
 </script>
 

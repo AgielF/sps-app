@@ -3,7 +3,7 @@ import { jwtDecode } from 'jwt-decode'
 import { Notify } from 'quasar'
 
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:5000/api',
+  baseURL: (import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000') + '/api',
 })
 
 // Request interceptor untuk menambahkan token

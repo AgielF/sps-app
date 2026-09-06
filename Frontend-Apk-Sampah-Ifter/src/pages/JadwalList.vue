@@ -242,11 +242,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import axios from 'axios'
 
 const router = useRouter()
+const route = useRoute()
 const $q = useQuasar()
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'
@@ -557,6 +558,9 @@ const deleteJadwal = async (id, wilayah) => {
 
 // Lifecycle
 onMounted(() => {
+  if (route.query.search) {
+    filter.value.search = route.query.search
+  }
   loadJadwal()
 })
 </script>

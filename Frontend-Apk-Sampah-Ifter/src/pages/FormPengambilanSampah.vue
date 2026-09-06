@@ -233,6 +233,7 @@
 </template>
 
 <script setup>
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'
 import { useRouter, useRoute } from 'vue-router'
 import { ref, computed, onMounted, watch } from 'vue'
 import { date, useQuasar } from 'quasar'
@@ -367,10 +368,10 @@ const loadWargaList = async () => {
     console.log('👤 [DEBUG] User Role:', userRole)
 
     try {
-      console.log('🌐 [DEBUG] Mengirim request ke /api/warga/list...')
+      console.log('🌐 [DEBUG] Mengirim request ke /api/warga...')
 
       // OPTION 1: Gunakan fetch langsung untuk debugging
-      const response = await fetch('http://127.0.0.1:5000/api/warga/list', {
+      const response = await fetch(`${API_URL}/api/warga`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${cleanToken}`,
@@ -405,7 +406,7 @@ const loadWargaList = async () => {
       // OPTION 2: Coba dengan axios api
       console.log('🔄 [DEBUG] Mencoba dengan axios...')
       try {
-        const response = await api.get('/api/warga/list', {
+        const response = await api.get('/api/warga', {
           headers: {
             Authorization: `Bearer ${cleanToken}`,
           },

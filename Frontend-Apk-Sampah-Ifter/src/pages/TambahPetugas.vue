@@ -111,6 +111,17 @@
             dense
             emit-value
             map-options
+            class="q-mb-md"
+          />
+
+          <q-input
+            v-model.number="form.gaji_per_karung"
+            label="Gaji per Karung (Rp)"
+            type="number"
+            outlined
+            dense
+            prefix="Rp"
+            :rules="[(val) => val >= 0 || 'Gaji tidak boleh negatif']"
           />
         </q-card-section>
 
@@ -139,7 +150,7 @@ const route = useRoute()
 const router = useRouter()
 const $q = useQuasar()
 
-const API_URL = 'http://127.0.0.1:5000'
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'
 
 const isEdit = ref(false)
 const loading = ref(false)
@@ -210,7 +221,7 @@ async function onSubmit() {
   try {
     const url = isEdit.value
       ? `${API_URL}/api/petugas/${route.params.id}`
-      : `${API_URL}/api/petugas/`
+      : `${API_URL}/api/petugas/create`
 
     const method = isEdit.value ? 'PUT' : 'POST'
 

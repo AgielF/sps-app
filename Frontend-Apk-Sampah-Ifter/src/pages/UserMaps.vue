@@ -49,6 +49,8 @@
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'
+
 // FIX leaflet icon
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({
@@ -213,7 +215,7 @@ export default {
         // Get token from localStorage or wherever you store it
         const token = localStorage.getItem('token') || ''
 
-        const res = await fetch('http://127.0.0.1:5000/api/lokasi/petugas', {
+        const res = await fetch(`${API_URL}/api/lokasi/petugas`, {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',

@@ -9,7 +9,7 @@ riwayat_bp = Blueprint('riwayat', __name__, url_prefix='/api/riwayat')
 def get_connection():
     return pymysql.connect(cursorclass=pymysql.cursors.DictCursor, **DB_CONFIG)
 
-@riwayat_bp.route('/', methods=['GET'])
+@riwayat_bp.route('/', methods=['GET'], strict_slashes=False)
 def get_riwayat():
     id_warga = request.args.get('id_warga')
     id_petugas = request.args.get('id_petugas')
@@ -131,23 +131,49 @@ def get_riwayat_by_warga(id_warga):
                 SELECT 
                     r.id, 
                     r.tanggal, 
-                    r.jumlah_karung, 
+                    r.jumlah_karung as total_karung, 
                     r.status,
                     p.nama_petugas,
-                    p.no_telp as telp_petugas
+                    p.no_telp as telp_petugas,
+                    'transaksi' as tipe,
+                    'Riwayat Pengambilan' as jenis,
+                    CONCAT('Pengambilan oleh ', IFNULL(p.nama_petugas, 'Petugas')) as catatan,
+                    NULL as estimasi_volume
                 FROM riwayat_aktivitas r
                 LEFT JOIN petugas p ON r.id_petugas = p.id
                 WHERE r.id_warga = %s
+                
+                UNION ALL
+                
+                SELECT 
+                    l.id, 
+                    l.created_at as tanggal, 
+                    l.jumlah_karung as total_karung, 
+                    l.status,
+                    NULL as nama_petugas,
+                    NULL as telp_petugas,
+                    'laporan' as tipe,
+                    'Laporan Sampah' as jenis,
+                    CONCAT('Laporan penjemputan sampah (', l.jenis_pembayaran, ')') as catatan,
+                    l.jumlah_karung as estimasi_volume
+                FROM laporan_sampah l
+                WHERE l.id_warga = %s
             """
-            params = [id_warga]
             
             if bulan:
-                sql += " AND DATE_FORMAT(r.tanggal, '%%Y-%%m') = %s"
-                params.append(bulan)
+                sql = f"""
+                    SELECT * FROM ({sql}) as gabungan
+                    WHERE DATE_FORMAT(tanggal, '%%Y-%%m') = %s
+                    ORDER BY tanggal DESC
+                """
+                cursor.execute(sql, (id_warga, id_warga, bulan))
+            else:
+                sql = f"""
+                    SELECT * FROM ({sql}) as gabungan
+                    ORDER BY tanggal DESC
+                """
+                cursor.execute(sql, (id_warga, id_warga))
                 
-            sql += " ORDER BY r.tanggal DESC"
-            
-            cursor.execute(sql, params)
             rows = cursor.fetchall()
             
             # Format tanggal
@@ -160,8 +186,8 @@ def get_riwayat_by_warga(id_warga):
                     row['tanggal_singkat'] = format_tanggal_singkat(row['tanggal'])
                     row['waktu'] = format_waktu(row['tanggal'])
                 
-                row['nama_petugas'] = row.get('nama_petugas', 'Belum ditugaskan')
-                row['telp_petugas'] = row.get('telp_petugas', '-')
+                row['nama_petugas'] = row.get('nama_petugas') or 'Belum ditugaskan'
+                row['telp_petugas'] = row.get('telp_petugas') or '-'
 
         return jsonify({
             "success": True, 
@@ -171,6 +197,68 @@ def get_riwayat_by_warga(id_warga):
         
     except Exception as e:
         print("get_riwayat_by_warga error:", e)
+        return jsonify({"success": False, "message": "Server error"}), 500
+    finally:
+        conn.close()
+
+# Endpoint statistik untuk warga
+@riwayat_bp.route('/warga/<int:id_warga>/stats', methods=['GET'])
+def get_stats_by_warga(id_warga):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Hitung total laporan
+            cursor.execute("SELECT COUNT(*) as total FROM laporan_sampah WHERE id_warga = %s", (id_warga,))
+            res1 = cursor.fetchone()
+            total_laporan = res1['total'] if res1 else 0
+            
+            # Hitung total selesai (riwayat aktivitas)
+            cursor.execute("SELECT COUNT(*) as selesai FROM riwayat_aktivitas WHERE id_warga = %s AND status = 'Selesai'", (id_warga,))
+            res2 = cursor.fetchone()
+            total_selesai = res2['selesai'] if res2 else 0
+            
+            data = {
+                "total_laporan": total_laporan,
+                "total_selesai": total_selesai
+            }
+        return jsonify({"success": True, "data": data}), 200
+    except Exception as e:
+        print("get_stats_by_warga error:", e)
+        return jsonify({"success": False, "message": "Server error"}), 500
+    finally:
+        conn.close()
+
+# Endpoint detail transaksi (aktivitas)
+@riwayat_bp.route('/transaksi/<int:id>', methods=['GET'])
+def get_transaksi_detail(id):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT 
+                    r.id, 
+                    r.tanggal, 
+                    r.jumlah_karung as total_karung, 
+                    r.status,
+                    p.nama_petugas,
+                    p.no_telp as telp_petugas,
+                    'transaksi' as tipe,
+                    'Riwayat Pengambilan' as jenis,
+                    CONCAT('Pengambilan oleh ', IFNULL(p.nama_petugas, 'Petugas')) as catatan
+                FROM riwayat_aktivitas r
+                LEFT JOIN petugas p ON r.id_petugas = p.id
+                WHERE r.id = %s
+            """, (id,))
+            row = cursor.fetchone()
+            if not row:
+                return jsonify({"success": False, "message": "Transaksi tidak ditemukan"}), 404
+                
+            if row['tanggal'] and isinstance(row['tanggal'], datetime):
+                row['tanggal'] = row['tanggal'].strftime('%Y-%m-%d %H:%M:%S')
+                
+        return jsonify({"success": True, "data": row}), 200
+    except Exception as e:
+        print("get_transaksi_detail error:", e)
         return jsonify({"success": False, "message": "Server error"}), 500
     finally:
         conn.close()

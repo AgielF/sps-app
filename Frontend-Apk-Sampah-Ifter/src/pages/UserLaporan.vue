@@ -324,7 +324,7 @@ import axios from 'axios'
 
 const route = useRoute()
 //const router = useRouter() // Inisialisasi router
-const API_URL = 'http://127.0.0.1:5000'
+const API_URL = `${API_URL}`
 
 // Refs
 const loading = ref(true)

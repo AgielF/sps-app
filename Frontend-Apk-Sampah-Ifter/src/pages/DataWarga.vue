@@ -263,15 +263,15 @@ const loadWarga = async () => {
     if (res.data.success) {
       wargaList.value = res.data.data.map((warga) => ({
         id: warga.id,
-        nama_warga: warga.nama_lengkap,
-        no_telp: warga.no_telp,
-        alamat: warga.alamat_lengkap,
+        nama_warga: warga.nama_warga || warga.nama_lengkap || 'Tanpa Nama',
+        no_telp: warga.no_telp || '-',
+        alamat: warga.alamat || warga.alamat_lengkap || '-',
         rt: warga.rt || '-',
         rw: warga.rw || '-',
-        kelurahan: warga.kelurahan,
+        kelurahan: warga.kelurahan || '-',
         saldo: warga.saldo || 0,
-        username: warga.username,
-        email: warga.email,
+        username: warga.username || '-',
+        email: warga.email || '-',
         latitude: warga.latitude,
         longitude: warga.longitude,
       }))

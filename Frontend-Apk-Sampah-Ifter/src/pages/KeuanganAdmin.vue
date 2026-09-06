@@ -879,7 +879,7 @@ const loadData = async () => {
     petugasName.value = user.username || user.name || 'Admin'
 
     // Load pemasukan
-    const pemasukanRes = await axios.get(`${API_URL}/api/keuangan/pemasukan`, {
+    const pemasukanRes = await axios.get(`${API_URL}/api/pemasukan`, {
       headers: { Authorization: `Bearer ${token}` },
     })
 
@@ -890,7 +890,7 @@ const loadData = async () => {
     }
 
     // Load pengeluaran
-    const pengeluaranRes = await axios.get(`${API_URL}/api/keuangan/pengeluaran`, {
+    const pengeluaranRes = await axios.get(`${API_URL}/api/pengeluaran`, {
       headers: { Authorization: `Bearer ${token}` },
     })
 
@@ -980,8 +980,8 @@ const savePemasukan = async () => {
 
     const method = isEditPemasukan.value ? 'PUT' : 'POST'
     const url = isEditPemasukan.value
-      ? `${API_URL}/api/keuangan/pemasukan/${dataToSend.id}`
-      : `${API_URL}/api/keuangan/pemasukan`
+      ? `${API_URL}/api/pemasukan/${dataToSend.id}`
+      : `${API_URL}/api/pemasukan`
 
     console.log('📤 Sending pemasukan data:', dataToSend)
 
@@ -1032,8 +1032,8 @@ const savePengeluaran = async () => {
 
     const method = isEditPengeluaran.value ? 'PUT' : 'POST'
     const url = isEditPengeluaran.value
-      ? `${API_URL}/api/keuangan/pengeluaran/${dataToSend.id}`
-      : `${API_URL}/api/keuangan/pengeluaran`
+      ? `${API_URL}/api/pengeluaran/${dataToSend.id}`
+      : `${API_URL}/api/pengeluaran`
 
     console.log('📤 Sending pengeluaran data:', dataToSend)
 
@@ -1081,7 +1081,7 @@ const deletePemasukan = async (id, keterangan) => {
   }).onOk(async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await axios.delete(`${API_URL}/api/keuangan/pemasukan/${id}`, {
+      const response = await axios.delete(`${API_URL}/api/pemasukan/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
 
@@ -1114,7 +1114,7 @@ const deletePengeluaran = async (id, keterangan) => {
   }).onOk(async () => {
     try {
       const token = localStorage.getItem('token')
-      const response = await axios.delete(`${API_URL}/api/keuangan/pengeluaran/${id}`, {
+      const response = await axios.delete(`${API_URL}/api/pengeluaran/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
 

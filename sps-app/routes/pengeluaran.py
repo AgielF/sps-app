@@ -12,7 +12,7 @@ def get_connection():
 """
 ini bagian penegluaran : yang biaya operasioanl sama gaji 
 """
-@pengeluaran_bp.route('/', methods=['GET'])
+@pengeluaran_bp.route('/', methods=['GET'], strict_slashes=False)
 def get_all_pengeluaran():
     jenis = request.args.get('jenis')
     tanggal = request.args.get('tanggal') 
@@ -21,8 +21,8 @@ def get_all_pengeluaran():
     try:
         with conn.cursor() as cursor:
             sql = """
-                SELECT id, jenis_pengeluaran, nama_pengeluaran,
-                       jumlah_pengeluaran, tanggal
+                SELECT id, jenis_pengeluaran AS kategori, nama_pengeluaran AS keterangan,
+                       jumlah_pengeluaran AS jumlah, tanggal
                 FROM pengeluaran
                 WHERE 1=1
             """
@@ -59,8 +59,8 @@ def get_pengeluaran_by_id(pengeluaran_id):
     try:
         with conn.cursor() as cursor:
             sql = """
-                SELECT id, jenis_pengeluaran, nama_pengeluaran,
-                       jumlah_pengeluaran, tanggal
+                SELECT id, jenis_pengeluaran AS kategori, nama_pengeluaran AS keterangan,
+                       jumlah_pengeluaran AS jumlah, tanggal
                 FROM pengeluaran
                 WHERE id = %s
             """
@@ -80,13 +80,16 @@ def get_pengeluaran_by_id(pengeluaran_id):
     finally:
         conn.close()
 
-@pengeluaran_bp.route('/', methods=['POST'])
+@pengeluaran_bp.route('/', methods=['POST'], strict_slashes=False)
 def create_pengeluaran():
     data = request.json or {}
 
-    jenis_pengeluaran = data.get('jenis_pengeluaran')
-    nama_pengeluaran = data.get('nama_pengeluaran')
+    jenis_pengeluaran = data.get('jenis_pengeluaran') or data.get('kategori')
+    nama_pengeluaran = data.get('nama_pengeluaran') or data.get('keterangan')
     jumlah_pengeluaran = data.get('jumlah_pengeluaran')
+    if jumlah_pengeluaran is None:
+        jumlah_pengeluaran = data.get('jumlah')
+        
     tanggal_str = data.get('tanggal') 
 
     if not jenis_pengeluaran or not nama_pengeluaran:
@@ -95,11 +98,14 @@ def create_pengeluaran():
         return jsonify({"success": False, "message": "jumlah_pengeluaran wajib diisi"}), 400
 
     allowed_jenis = ['operasional', 'gaji', 'lainnya']
-    if jenis_pengeluaran not in allowed_jenis:
-        return jsonify({
-            "success": False,
-            "message": "jenis_pengeluaran harus salah satu dari: operasional, gaji, atau lainnya"
-        }), 400
+    # Sometimes frontend sends uppercase or other values, we should normalize or just accept it
+    jenis_lower = jenis_pengeluaran.lower() if isinstance(jenis_pengeluaran, str) else ''
+    
+    if jenis_lower not in allowed_jenis:
+        # If it's a custom category from frontend, we map it to 'lainnya' instead of throwing 400
+        jenis_pengeluaran = 'lainnya'
+    else:
+        jenis_pengeluaran = jenis_lower
 
     tanggal_val = None
     if tanggal_str:
