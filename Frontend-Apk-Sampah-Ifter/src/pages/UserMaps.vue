@@ -213,7 +213,7 @@ export default {
         // Get token from localStorage or wherever you store it
         const token = localStorage.getItem('token') || ''
 
-        const res = await fetch('https://spsbackend.pythonanywhere.com/api/lokasi/petugas', {
+        const res = await fetch('http://127.0.0.1:5000/api/lokasi/petugas', {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',

@@ -370,7 +370,7 @@ const loadWargaList = async () => {
       console.log('🌐 [DEBUG] Mengirim request ke /api/warga/list...')
 
       // OPTION 1: Gunakan fetch langsung untuk debugging
-      const response = await fetch('https://spsbackend.pythonanywhere.com/api/warga/list', {
+      const response = await fetch('http://127.0.0.1:5000/api/warga/list', {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${cleanToken}`,

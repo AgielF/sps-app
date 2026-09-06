@@ -293,7 +293,7 @@ import { date } from 'quasar'
 import axios from 'axios'
 
 const router = useRouter()
-const API_URL = 'https://spsbackend.pythonanywhere.com/'
+const API_URL = 'http://127.0.0.1:5000/'
 
 // State
 const showDialog = ref(false)

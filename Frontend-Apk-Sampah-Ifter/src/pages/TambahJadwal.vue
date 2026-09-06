@@ -167,7 +167,7 @@ const route = useRoute()
 const router = useRouter()
 const $q = useQuasar()
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://spsbackend.pythonanywhere.com'
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'
 
 const isEdit = ref(false)
 const loading = ref(false)
