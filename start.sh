@@ -9,6 +9,15 @@ NC='\033[0m' # No Color
 
 echo -e "${YELLOW}=== Menjalankan SPS App (Frontend & Backend) ===${NC}\n"
 
+# Load NVM otomatis jika ada, agar NPM terdeteksi di dalam script ini
+if [ -d "$HOME/.config/nvm" ]; then
+    export NVM_DIR="$HOME/.config/nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+elif [ -d "$HOME/.nvm" ]; then
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+fi
+
 # Fungsi untuk mengecek ketersediaan perintah (command)
 command_exists() {
     command -v "$1" >/dev/null 2>&1
