@@ -11,6 +11,18 @@ echo -e "${YELLOW}=== Menjalankan SPS App (Frontend & Backend) ===${NC}\n"
 # 1. Jalankan Backend
 echo -e "${BLUE}[BACKEND] Menjalankan API Flask...${NC}"
 cd sps-app
+
+# Setup venv jika belum ada
+if [ ! -d "venv" ]; then
+    echo -e "${YELLOW}[BACKEND] Membuat virtual environment (venv)...${NC}"
+    python3 -m venv venv
+    echo -e "${YELLOW}[BACKEND] Menginstal dependensi Python...${NC}"
+    source venv/bin/activate
+    pip install -r requirements.txt
+else
+    source venv/bin/activate
+fi
+
 python3 app.py &
 BACKEND_PID=$!
 cd ..

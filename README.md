@@ -230,10 +230,7 @@ You must run both the frontend and backend services simultaneously to use the ap
      mysql -u root -p spsdb < spsdb.sql
      ```
    - Update `sps-app/config.py` with your local MySQL credentials.
-4. **Python Dependencies:** Install the required backend packages:
-   ```bash
-   pip install Flask Flask-Cors PyMySQL PyJWT Werkzeug
-   ```
+4. **Python Dependencies:** The `start.sh` script automatically handles setting up a Python virtual environment (`venv`) and installing dependencies from `requirements.txt`. You do not need to install them manually.
 
 ### Running the Application
 
