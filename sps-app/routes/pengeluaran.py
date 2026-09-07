@@ -112,10 +112,13 @@ def create_pengeluaran():
         try:
             tanggal_val = datetime.strptime(tanggal_str, "%Y-%m-%d %H:%M:%S")
         except ValueError:
-            return jsonify({
-                "success": False,
-                "message": "Format tanggal harus 'YYYY-MM-DD HH:MM:SS'"
-            }), 400
+            try:
+                tanggal_val = datetime.strptime(tanggal_str, "%Y-%m-%d")
+            except ValueError:
+                return jsonify({
+                    "success": False,
+                    "message": "Format tanggal harus 'YYYY-MM-DD' atau 'YYYY-MM-DD HH:MM:SS'"
+                }), 400
 
     conn = get_connection()
     try:
@@ -155,6 +158,101 @@ def create_pengeluaran():
 
     except Exception as e:
         print("create_pengeluaran error:", e)
+        conn.rollback()
+        return jsonify({"success": False, "message": "Server error"}), 500
+    finally:
+        conn.close()
+
+@pengeluaran_bp.route('/<int:pengeluaran_id>', methods=['DELETE'])
+def delete_pengeluaran(pengeluaran_id):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Check if exists
+            cursor.execute("SELECT id FROM pengeluaran WHERE id = %s", (pengeluaran_id,))
+            if not cursor.fetchone():
+                return jsonify({"success": False, "message": "Data pengeluaran tidak ditemukan"}), 404
+                
+            cursor.execute("DELETE FROM pengeluaran WHERE id = %s", (pengeluaran_id,))
+            conn.commit()
+            
+        return jsonify({"success": True, "message": "Data pengeluaran berhasil dihapus"}), 200
+    except Exception as e:
+        print("delete_pengeluaran error:", e)
+        conn.rollback()
+        return jsonify({"success": False, "message": "Server error"}), 500
+    finally:
+        conn.close()
+
+@pengeluaran_bp.route('/<int:pengeluaran_id>', methods=['PUT'])
+def update_pengeluaran(pengeluaran_id):
+    data = request.json or {}
+
+    jenis_pengeluaran = data.get('jenis_pengeluaran') or data.get('kategori')
+    nama_pengeluaran = data.get('nama_pengeluaran') or data.get('keterangan')
+    jumlah_pengeluaran = data.get('jumlah_pengeluaran')
+    if jumlah_pengeluaran is None:
+        jumlah_pengeluaran = data.get('jumlah')
+        
+    tanggal_str = data.get('tanggal') 
+
+    if not jenis_pengeluaran or not nama_pengeluaran:
+        return jsonify({"success": False, "message": "jenis_pengeluaran dan nama_pengeluaran wajib diisi"}), 400
+    if jumlah_pengeluaran is None:
+        return jsonify({"success": False, "message": "jumlah_pengeluaran wajib diisi"}), 400
+
+    allowed_jenis = ['operasional', 'gaji', 'lainnya']
+    jenis_lower = jenis_pengeluaran.lower() if isinstance(jenis_pengeluaran, str) else ''
+    if jenis_lower not in allowed_jenis:
+        jenis_pengeluaran = 'lainnya'
+    else:
+        jenis_pengeluaran = jenis_lower
+
+    tanggal_val = None
+    if tanggal_str:
+        try:
+            tanggal_val = datetime.strptime(tanggal_str, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            try:
+                tanggal_val = datetime.strptime(tanggal_str, "%Y-%m-%d")
+            except ValueError:
+                return jsonify({
+                    "success": False,
+                    "message": "Format tanggal harus 'YYYY-MM-DD' atau 'YYYY-MM-DD HH:MM:SS'"
+                }), 400
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Check if exists
+            cursor.execute("SELECT id FROM pengeluaran WHERE id = %s", (pengeluaran_id,))
+            if not cursor.fetchone():
+                return jsonify({"success": False, "message": "Data pengeluaran tidak ditemukan"}), 404
+                
+            if tanggal_val:
+                sql = """
+                    UPDATE pengeluaran
+                    SET jenis_pengeluaran = %s, nama_pengeluaran = %s, jumlah_pengeluaran = %s, tanggal = %s
+                    WHERE id = %s
+                """
+                cursor.execute(sql, (jenis_pengeluaran, nama_pengeluaran, jumlah_pengeluaran, tanggal_val, pengeluaran_id))
+            else:
+                sql = """
+                    UPDATE pengeluaran
+                    SET jenis_pengeluaran = %s, nama_pengeluaran = %s, jumlah_pengeluaran = %s
+                    WHERE id = %s
+                """
+                cursor.execute(sql, (jenis_pengeluaran, nama_pengeluaran, jumlah_pengeluaran, pengeluaran_id))
+                
+            conn.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Data pengeluaran berhasil diupdate"
+        }), 200
+
+    except Exception as e:
+        print("update_pengeluaran error:", e)
         conn.rollback()
         return jsonify({"success": False, "message": "Server error"}), 500
     finally:

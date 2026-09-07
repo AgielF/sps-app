@@ -201,3 +201,107 @@ def create_pemasukan():
         return jsonify({"success": False, "message": "Server error"}), 500
     finally:
         conn.close()
+
+@pemasukan_bp.route('/<int:pemasukan_id>', methods=['DELETE'])
+def delete_pemasukan(pemasukan_id):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Check if exists
+            cursor.execute("SELECT id FROM pemasukan WHERE id = %s", (pemasukan_id,))
+            if not cursor.fetchone():
+                return jsonify({"success": False, "message": "Data pemasukan tidak ditemukan"}), 404
+                
+            cursor.execute("DELETE FROM pemasukan WHERE id = %s", (pemasukan_id,))
+            conn.commit()
+            
+        return jsonify({"success": True, "message": "Data pemasukan berhasil dihapus"}), 200
+    except Exception as e:
+        print("delete_pemasukan error:", e)
+        conn.rollback()
+        return jsonify({"success": False, "message": "Server error"}), 500
+    finally:
+        conn.close()
+
+@pemasukan_bp.route('/<int:pemasukan_id>', methods=['PUT'])
+def update_pemasukan(pemasukan_id):
+    data = request.json or {}
+
+    id_warga = data.get('id_warga')
+    id_warga = id_warga if id_warga not in ('', None) else None
+    
+    id_laporan = data.get('id_laporan')
+    id_laporan = id_laporan if id_laporan not in ('', None) else None
+    
+    jumlah_karung = data.get('jumlah_karung')
+    jumlah_karung = jumlah_karung if jumlah_karung not in ('', None) else None
+    
+    jumlah_pembayaran = data.get('jumlah_pembayaran')
+    if jumlah_pembayaran is None:
+        jumlah_pembayaran = data.get('jumlah')
+        
+    kekurangan = data.get('kekurangan', 0)
+    kelebihan = data.get('kelebihan', 0)
+
+    kategori = data.get('kategori')
+    keterangan = data.get('keterangan')
+
+    if jumlah_pembayaran is None:
+        return jsonify({"success": False, "message": "jumlah_pembayaran wajib diisi"}), 400
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Check if exists
+            cursor.execute("SELECT id FROM pemasukan WHERE id = %s", (pemasukan_id,))
+            if not cursor.fetchone():
+                return jsonify({"success": False, "message": "Data pemasukan tidak ditemukan"}), 404
+                
+            # Validasi id_warga
+            if id_warga:
+                cursor.execute("SELECT id FROM warga WHERE id = %s", (id_warga,))
+                if not cursor.fetchone():
+                    return jsonify({"success": False, "message": "Data warga tidak ditemukan"}), 404
+
+            # Validasi id_laporan
+            if id_laporan:
+                cursor.execute(
+                    "SELECT id, id_warga, status, jumlah_karung FROM laporan_sampah WHERE id = %s",
+                    (id_laporan,)
+                )
+                laporan = cursor.fetchone()
+                if not laporan:
+                    return jsonify({"success": False, "message": "Data laporan tidak ditemukan"}), 404
+                if id_warga and laporan['id_warga'] != int(id_warga):
+                    return jsonify({
+                        "success": False,
+                        "message": "id_warga pada pemasukan tidak sesuai dengan id_warga di laporan"
+                    }), 400
+
+                if not jumlah_karung:
+                    jumlah_karung = laporan['jumlah_karung']
+
+            sql = """
+                UPDATE pemasukan
+                SET id_warga = %s, id_laporan = %s, jumlah_karung = %s,
+                    jumlah_pembayaran = %s, kekurangan = %s, kelebihan = %s,
+                    kategori = %s, keterangan = %s
+                WHERE id = %s
+            """
+            cursor.execute(sql, (
+                id_warga, id_laporan, jumlah_karung, jumlah_pembayaran,
+                kekurangan, kelebihan, kategori, keterangan, pemasukan_id
+            ))
+            conn.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Data pemasukan berhasil diupdate"
+        }), 200
+
+    except Exception as e:
+        print("update_pemasukan error:", e)
+        conn.rollback()
+        return jsonify({"success": False, "message": "Server error"}), 500
+    finally:
+        conn.close()

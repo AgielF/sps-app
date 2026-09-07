@@ -102,11 +102,11 @@
         </div>
         <div class="col-12 col-md-3">
           <q-select
-            v-model="filter.tipe"
-            label="Filter Tipe"
+            v-model="filter.kategori"
+            label="Filter Kategori"
             outlined
             dense
-            :options="tipeOptions"
+            :options="kategoriOptions"
             clearable
             emit-value
             map-options
@@ -423,11 +423,14 @@
               <div class="text-caption text-grey-7">Perbandingan bulan ini</div>
             </q-card-section>
             <q-card-section>
-              <div class="chart-placeholder">
+              <div class="chart-placeholder" v-if="filteredPemasukan.length === 0 && filteredPengeluaran.length === 0">
                 <div class="text-center q-py-xl">
                   <q-icon name="bar_chart" size="3em" color="grey-4" />
-                  <div class="text-caption text-grey-6 q-mt-sm">Chart akan ditampilkan di sini</div>
+                  <div class="text-caption text-grey-6 q-mt-sm">Belum ada data</div>
                 </div>
+              </div>
+              <div v-else style="height: 250px">
+                <canvas ref="comparisonChartRef"></canvas>
               </div>
             </q-card-section>
           </q-card>
@@ -439,11 +442,14 @@
               <div class="text-caption text-grey-7">Distribusi pengeluaran bulan ini</div>
             </q-card-section>
             <q-card-section>
-              <div class="chart-placeholder">
+              <div class="chart-placeholder" v-if="filteredPengeluaran.length === 0">
                 <div class="text-center q-py-xl">
                   <q-icon name="pie_chart" size="3em" color="grey-4" />
-                  <div class="text-caption text-grey-6 q-mt-sm">Chart akan ditampilkan di sini</div>
+                  <div class="text-caption text-grey-6 q-mt-sm">Belum ada pengeluaran</div>
                 </div>
+              </div>
+              <div v-else style="height: 250px">
+                <canvas ref="categoryChartRef"></canvas>
               </div>
             </q-card-section>
           </q-card>
@@ -604,9 +610,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch, nextTick, onUnmounted } from 'vue'
 import { useQuasar, date } from 'quasar'
 import axios from 'axios'
+import { Chart, registerables } from 'chart.js'
+
+Chart.register(...registerables)
 
 const $q = useQuasar()
 
@@ -614,6 +623,10 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000'
 
 // States
 const loading = ref(true)
+const comparisonChartRef = ref(null)
+const categoryChartRef = ref(null)
+let comparisonChart = null
+let categoryChart = null
 const saving = ref(false)
 const activeTab = ref('pemasukan')
 const showPemasukanDialog = ref(false)
@@ -630,7 +643,7 @@ const pengeluaranList = ref([])
 const filter = ref({
   bulan: '',
   tahun: new Date().getFullYear(),
-  tipe: '',
+  kategori: '',
   search: '',
 })
 
@@ -673,10 +686,9 @@ const bulanOptions = [
   { label: 'Desember', value: 12 },
 ]
 
-const tipeOptions = [
-  { label: 'Pemasukan', value: 'pemasukan' },
-  { label: 'Pengeluaran', value: 'pengeluaran' },
-]
+const kategoriOptions = computed(() => {
+  return [...new Set([...kategoriPemasukan, ...kategoriPengeluaran])].sort()
+})
 
 const kategoriPemasukan = ['Iuran Warga', 'Denda', 'Bantuan', 'Lain-lain']
 
@@ -737,6 +749,10 @@ const filteredPemasukan = computed(() => {
     })
   }
 
+  if (filter.value.kategori) {
+    filtered = filtered.filter((item) => item.kategori === filter.value.kategori)
+  }
+
   if (filter.value.search) {
     const search = filter.value.search.toLowerCase()
     filtered = filtered.filter(
@@ -764,6 +780,10 @@ const filteredPengeluaran = computed(() => {
       const dateObj = new Date(item.tanggal)
       return dateObj.getFullYear() === parseInt(filter.value.tahun)
     })
+  }
+
+  if (filter.value.kategori) {
+    filtered = filtered.filter((item) => item.kategori === filter.value.kategori)
   }
 
   if (filter.value.search) {
@@ -1136,6 +1156,91 @@ const deletePengeluaran = async (id, keterangan) => {
     }
   })
 }
+
+// Charts Logic
+const renderCharts = () => {
+  nextTick(() => {
+    // Comparison Chart (Pemasukan vs Pengeluaran)
+    if (comparisonChartRef.value) {
+      if (comparisonChart) comparisonChart.destroy()
+      const ctx1 = comparisonChartRef.value.getContext('2d')
+      
+      const totalPem = totalPemasukan.value
+      const totalPeng = totalPengeluaran.value
+      
+      comparisonChart = new Chart(ctx1, {
+        type: 'bar',
+        data: {
+          labels: ['Pemasukan', 'Pengeluaran'],
+          datasets: [{
+            label: 'Total',
+            data: [totalPem, totalPeng],
+            backgroundColor: ['#4CAF50', '#F44336'],
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: (value) => formatCurrency(value).replace('Rp', '')
+              }
+            }
+          }
+        }
+      })
+    }
+    
+    // Category Chart (Distribusi Pengeluaran)
+    if (categoryChartRef.value) {
+      if (categoryChart) categoryChart.destroy()
+      const ctx2 = categoryChartRef.value.getContext('2d')
+      
+      const categoryTotals = {}
+      filteredPengeluaran.value.forEach(item => {
+        const cat = item.kategori || 'Lainnya'
+        categoryTotals[cat] = (categoryTotals[cat] || 0) + (parseFloat(item.jumlah) || 0)
+      })
+      
+      const labels = Object.keys(categoryTotals)
+      const data = Object.values(categoryTotals)
+      const colorPalette = ['#2196F3', '#FF9800', '#4CAF50', '#9C27B0', '#00BCD4', '#FFC107', '#03A9F4', '#9E9E9E', '#E91E63', '#F44336']
+      
+      categoryChart = new Chart(ctx2, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: data,
+            backgroundColor: colorPalette.slice(0, labels.length)
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'right' }
+          }
+        }
+      })
+    }
+  })
+}
+
+watch([filteredPemasukan, filteredPengeluaran], () => {
+  renderCharts()
+}, { deep: true })
+
+onUnmounted(() => {
+  if (comparisonChart) comparisonChart.destroy()
+  if (categoryChart) categoryChart.destroy()
+})
 
 // Lifecycle
 onMounted(() => {

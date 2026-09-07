@@ -184,7 +184,7 @@
                       {{ props.row.telepon_petugas || '' }}
                     </div>
                   </div>
-                  <div v-else class="text-grey-7">-</div>
+                  <div v-else class="text-grey-7">Admin</div>
                 </q-td>
 
                 <q-td key="jumlah" :props="props">
@@ -298,21 +298,82 @@ const loadAktivitas = async () => {
   try {
     const token = localStorage.getItem('token')
 
-    // Load aktivitas
+    // Load aktivitas without params because backend returns all
     const res = await axios.get(`${API_URL}/api/riwayat_admin/`, {
-      headers: { Authorization: `Bearer ${token}` },
-      params: filterParams.value,
+      headers: { Authorization: `Bearer ${token}` }
     })
 
     if (res.data.success) {
-      aktivitasList.value = res.data.data
+      let data = res.data.data
+
+      // Frontend Filter Logic
+      if (filterParams.value.jenis) {
+         data = data.filter(d => d.type && d.type.toLowerCase() === filterParams.value.jenis.toLowerCase())
+      }
+      if (filterParams.value.kategori) {
+         data = data.filter(d => d.type && d.type.toLowerCase() === filterParams.value.kategori.toLowerCase())
+      }
+      if (filterParams.value.start_date) {
+         data = data.filter(d => new Date(d.tanggal) >= new Date(filterParams.value.start_date))
+      }
+      if (filterParams.value.end_date) {
+         const end = new Date(filterParams.value.end_date)
+         end.setHours(23, 59, 59, 999)
+         data = data.filter(d => new Date(d.tanggal) <= end)
+      }
+
+      // Map Data for Table Display
+      const mappedData = data.map(item => {
+          let color = 'grey'
+          let icon = 'info'
+          let prefix = ''
+          
+          if (item.type === 'Pemasukan') {
+             color = 'green'
+             icon = 'arrow_downward'
+             prefix = '+'
+          } else if (item.type === 'Pengeluaran') {
+             color = 'red'
+             icon = 'arrow_upward'
+             prefix = '-'
+          } else if (item.type === 'Aktivitas') {
+             color = 'blue'
+             icon = 'local_shipping'
+          }
+
+          const dateObj = new Date(item.tanggal)
+          const waktu = dateObj.toLocaleDateString('id-ID', {
+            day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+          })
+          
+          let statusColor = 'orange'
+          if (item.status === 'Completed' || item.status === 'Selesai') statusColor = 'green'
+          else if (item.status === 'Batal') statusColor = 'red'
+          
+          return {
+            ...item,
+            waktu: waktu,
+            color: color,
+            icon: icon,
+            jenis: item.type,
+            kode_transaksi: item.type === 'Aktivitas' ? '-' : `TRX-${item.id}`,
+            keterangan: item.description,
+            kategori: item.type,
+            jumlah_formatted: item.amount ? prefix + formatCurrency(item.amount) : '-',
+            total_karung: item.jumlah_karung,
+            status_color: statusColor,
+            status_bayar: item.status,
+            metode_bayar: item.type === 'Aktivitas' ? '' : 'Sistem'
+          }
+      })
+
+      aktivitasList.value = mappedData
 
       // Calculate stats
-      calculateStats(res.data.data)
+      calculateStats(mappedData)
     }
 
     // Extract options
-    extractKategoriOptions()
     extractKategoriOptions()
   } catch (error) {
     console.error('Error loading aktivitas:', error)
@@ -457,71 +518,48 @@ const resetFilter = () => {
   loadAktivitas()
 }
 
-const exportData = async () => {
+const exportData = () => {
   exporting.value = true
   try {
-    const token = localStorage.getItem('token')
-
-    // Build query params
-    const params = new URLSearchParams()
-    if (filter.value.startDate) params.append('start_date', filter.value.startDate)
-    if (filter.value.endDate) params.append('end_date', filter.value.endDate)
-    if (filter.value.jenis) params.append('jenis', filter.value.jenis.value || filter.value.jenis)
-    if (filter.value.kategori)
-      params.append('kategori', filter.value.kategori.value || filter.value.kategori)
-
-    const url = `${API_URL}/api/riwayat_admin/export-csv?${params.toString()}`
-
-    // Fetch dengan headers
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    if (aktivitasList.value.length === 0) {
+      $q.notify({ type: 'warning', message: 'Tidak ada data untuk diexport' })
+      exporting.value = false
+      return
     }
 
-    // Get filename from Content-Disposition header
-    const contentDisposition = response.headers.get('content-disposition')
-    let filename = 'laporan_transaksi.csv'
+    const headers = ['Waktu', 'Jenis', 'Kode Transaksi', 'Keterangan', 'Petugas', 'Jumlah', 'Total Karung', 'Status', 'Metode Bayar']
+    const rows = aktivitasList.value.map(item => [
+      item.waktu ? item.waktu.replace(/,/g, '') : '',
+      item.jenis || '',
+      item.kode_transaksi || '',
+      item.keterangan ? item.keterangan.replace(/,/g, ' ') : '-',
+      item.nama_petugas ? item.nama_petugas.replace(/,/g, ' ') : 'Admin',
+      item.amount || 0,
+      item.total_karung || '-',
+      item.status_bayar || '',
+      item.metode_bayar || ''
+    ])
 
-    if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
-      if (filenameMatch && filenameMatch[1]) {
-        filename = filenameMatch[1].replace(/['"]/g, '')
-      }
-    }
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n')
 
-    // Convert to blob and download
-    const blob = await response.blob()
-    const blobUrl = window.URL.createObjectURL(blob)
-
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
-    link.href = blobUrl
-    link.download = filename
-    link.style.display = 'none'
-
+    const url = URL.createObjectURL(blob)
+    
+    link.setAttribute('href', url)
+    link.setAttribute('download', 'laporan_aktivitas.csv')
+    link.style.visibility = 'hidden'
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-
-    // Cleanup
-    window.URL.revokeObjectURL(blobUrl)
-
-    $q.notify({
-      type: 'positive',
-      message: `File "${filename}" berhasil didownload`,
-      timeout: 3000,
-    })
+    
+    $q.notify({ type: 'positive', message: 'Berhasil export data' })
   } catch (error) {
     console.error('Export error:', error)
-    $q.notify({
-      type: 'negative',
-      message: 'Gagal export data',
-      caption: error.message,
-    })
+    $q.notify({ type: 'negative', message: 'Gagal export data' })
   } finally {
     exporting.value = false
   }

@@ -12,7 +12,7 @@ CORS(app)  # <-- aktifkan CORS
 
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
-SECRET_KEY = "sps_secret_key"  # bisa diganti, simpan rahasia
+SECRET_KEY = "sps_secret_key_very_secure_and_long_enough"  # minimal 32 bytes untuk SHA256
 
 def get_connection():
     return pymysql.connect(cursorclass=pymysql.cursors.DictCursor, **DB_CONFIG)
@@ -64,7 +64,7 @@ def login():
             "role": user['role']
         }
         
-        return jsonify({"token": token, "user": user_response})
+        return jsonify({"success": True, "token": token, "user": user_response})
     else:
         return jsonify({"message": "Invalid credentials"}), 401
 

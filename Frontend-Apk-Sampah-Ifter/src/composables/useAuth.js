@@ -25,12 +25,12 @@ export function useAuth() {
         currentUser.value = response.data.user
         
         // Routing logic based on Role
-        if (response.data.user.role === 'Admin') {
-          router.push('/admin-dashboard')
-        } else if (response.data.user.role === 'Petugas') {
-          router.push('/petugas-dashboard')
+        if (response.data.user.role === 'admin') {
+          router.push('/admin')
+        } else if (response.data.user.role === 'petugas') {
+          router.push('/petugas')
         } else {
-          router.push('/user-dashboard')
+          router.push('/user')
         }
         return { success: true, user: response.data.user }
       }
